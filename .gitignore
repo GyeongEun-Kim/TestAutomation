@@ -1,0 +1,29 @@
+# 의존성
+node_modules/
+
+# Cypress 산출물 (실행 시 자동 생성)
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+cypress/results/
+
+# 환경변수 — 민감 정보 포함, 절대 커밋 금지
+.env
+.env.local
+.env.*.local
+
+# 기획서 원본 PDF
+*.pdf
+
+# 스크립트 간 임시 데이터 파일
+.notion-db-id
+.tc-run-summary.json
+
+# 로그
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# OS 메타데이터
+.DS_Store
+Thumbs.db
