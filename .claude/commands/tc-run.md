@@ -1,52 +1,42 @@
-Cypress 테스트를 실행하고 결과를 Notion에 업데이트해.
+너는 QA 자동화 엔지니어야. Playwright 테스트를 실행하고, 실패 시 자가 치유를 시도한 뒤 결과를 Notion DB에 업데이트하는 게 목표야.
+
+---
 
 ## 1단계 — 사전 확인
-- `.env`에서 PROJECT_NAME을 읽어. placeholder거나 비어있으면 중단하고 알려줘.
-- `cypress/e2e/{PROJECT_NAME}/` 폴더에 테스트 파일이 존재하는지 확인해. 없으면 "/tc-code를 먼저 실행해주세요"라고 안내하고 중단해.
-- `.notion-db-id` 파일이 없으면 "/tc-generate를 먼저 실행해주세요"라고 안내하고 중단해.
-- `cypress/results/` 폴더가 없으면 생성해.
+- `.env`에서 PROJECT_NAME, NOTION_DB_ID가 올바른지 확인해. 비어있으면 중단하고 알려줘.
+- `./tests/{PROJECT_NAME}/` 폴더에 테스트 파일이 존재하는지 확인해. 없으면 "/tc-code를 먼저 실행해주세요"라고 안내하고 중단해.
 
-## 2단계 — 실행 대상 스펙 결정
-아래 두 경로의 스펙 파일을 수집해:
-- 프로젝트 전용: `cypress/e2e/{PROJECT_NAME}/*.cy.js`
-- 프로젝트 공통: `cypress/e2e/common/{PROJECT_NAME}_*.cy.js`
+---
 
-## 3단계 — Cypress 실행
+## 2단계 — 테스트 실행 및 자가 치유
+1. `npx playwright test` 명령어로 테스트를 실행해.
+2. 만약 실패한 케이스가 있다면, 아래의 **[자가 치유 프로세스]**를 최대 2회 시도해:
+   - Playwright MCP로 해당 페이지를 직접 열어서 실제 DOM 구조를 다시 확인해.
+   - 실패 원인이 셀렉터 문제라면, [2단계 셀렉터 규칙]에 맞춰 `./pages/{PROJECT_NAME}/selectors.json` 및 관련 Page Object 코드를 수정해.
+   - 수정 후, 해당 실패한 테스트 파일만 단독 재실행(`npx playwright test {파일명}`)하여 검증해.
 
-**스펙 파일이 5개 미만이면** — 단일 프로세스:
-```bash
-npx cypress run \
-  --spec "cypress/e2e/{PROJECT_NAME}/*.cy.js,cypress/e2e/common/{PROJECT_NAME}_*.cy.js" \
-  --reporter json \
-  --reporter-options "output=cypress/results/results.json"
-```
+---
 
-**스펙 파일이 5개 이상이면** — 병렬 실행:
-CPU 코어 수 기준으로 스펙 파일을 그룹으로 나눠 각 그룹을 백그라운드로 동시 실행해:
-```bash
-npx cypress run --spec "{그룹1 파일목록}" --reporter json --reporter-options "output=cypress/results/results-0.json" &
-npx cypress run --spec "{그룹2 파일목록}" --reporter json --reporter-options "output=cypress/results/results-1.json" &
-wait
-```
-모든 그룹 완료 후 결과 JSON들을 읽어 `cypress/results/results.json` 하나로 병합해.
-
-## 4단계 — 결과 파싱
-`cypress/results/results.json`을 읽어 다음 정보를 추출해:
-- 각 `it()` 블록 제목에서 `[TC-XXX]` 또는 `[TC-CXXX]` 패턴으로 TC ID 추출
-- 성공 / 실패 / 스킵 판별
+## 3단계 — 결과 파싱
+테스트 결과 리포트(JSON)를 읽어 다음 정보를 추출해:
+- 테스트 제목에서 `[TC-XXX]` 패턴으로 TC ID 추출
+- 성공(pass) / 실패(fail) / 스킵 판별
 - 실패 케이스는 에러 메시지 첫 줄을 원인으로 기록 (200자 이내)
 
-## 5단계 — Notion 업데이트
-`.notion-db-id`에서 DB ID를 읽어. Notion MCP 도구로 DB 내 TC 페이지 목록을 조회해서 TC ID → 페이지 ID 매핑을 만들어.
+---
 
-각 TC 결과에 대해 `notion-update-page` 도구로 아래 속성을 업데이트해:
-- `상태`: 성공 / 실패 / 스킵
-- `마지막 실행`: 현재 시각
-- `실패 원인`: 실패 시 에러 메시지 첫 줄 (성공·스킵이면 비워)
+## 4단계 — Notion 업데이트
+`.notion-db-id` 또는 환경변수에서 DB ID를 읽어와 Notion MCP 도구로 DB 내 TC 페이지 목록을 조회해.
+케이스 ID가 일치하는 노션 페이지에 아래 속성을 업데이트해:
 
-## 6단계 — 최종 보고
-- 실행 범위: 프로젝트 전용 N개 + 공통 N개 스펙
-- 전체 / 성공 / 실패 / 스킵 수 (병렬 실행 시 그룹별 소요 시간 포함)
-- 실패한 TC 목록 + 원인 한 줄 요약
-- 실패 스크린샷 경로 (cypress/screenshots/)
-- Notion 업데이트 완료 여부
+- `상태` (또는 통과여부): 성공 시 '성공' (true), 실패 시 '실패' (false)
+- `마지막 실행` (또는 실행일시): 현재 시각 (KST)
+- `실패 원인` (또는 결과메시지): 성공 시 비워두고, 실패 시 "❌ FAIL: [에러 메시지 첫 줄]" 기록
+
+---
+
+## 5단계 — 최종 보고
+- 실행 범위: 전체 테스트 케이스 수
+- 통과 / 실패 / 스킵 수
+- **자가 치유 요약**: AI가 스스로 수정한 파일 목록과 수정된 셀렉터 내용
+- 여전히 실패한 TC 목록과 최종 원인 요약
