@@ -14,7 +14,10 @@
       "mcp__plugin_Notion_notion__notion-update-view",
       "mcp__plugin_Notion_notion__notion-create-view",
       "mcp__plugin_Notion_notion__notion-duplicate-page",
-      "mcp__plugin_Notion_notion__notion-move-pages"
+      "mcp__plugin_Notion_notion__notion-move-pages",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_click"
     ]
   }
 }
